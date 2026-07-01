@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -117,16 +117,16 @@ const PayrollPage = () => {
   const [adjEmp, setAdjEmp]         = useState(null);
   const [adjForm, setAdjForm]       = useState({ type: 'bonus', amountPkr: 0, reason: '' });
 
-  const fetchPayroll = async () => {
+  const fetchPayroll = useCallback(async () => {
     setLoading(true);
     try {
       const { data: res } = await api.get(`/payroll/monthly/${month}`);
       setData(res.data);
     } catch { toast.error('Failed to load payroll'); }
     finally { setLoading(false); }
-  };
+  }, [month]);
 
-  useEffect(() => { fetchPayroll(); }, [month]);
+  useEffect(() => { fetchPayroll(); }, [fetchPayroll]);
 
   /* ── Actions ── */
   const markAllPaid = async () => {

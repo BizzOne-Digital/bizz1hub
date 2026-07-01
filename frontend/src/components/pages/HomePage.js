@@ -41,12 +41,11 @@ const HomePage = () => {
   if (loading) return <div className="loading"><div className="spinner" />Loading dashboard...</div>;
   if (!data) return null;
 
-  const { ue, payroll, rc, pl } = data;
+  const { ue, payroll, rc } = data;
   const netProfit = ue?.metrics?.netProfitCad || 0;
   const totalPayroll = payroll?.summary?.totalNetCad || 0;
   const activeEmployees = payroll?.summary?.activeCount || 0;
   const markup = rc?.rateCard?.defaultMarkupPercent || 0;
-  const retainerRevenue = pl?.metrics?.mrrCad || 0;
   const breakEven = ue?.metrics?.breakEvenSites;
   const closes = ue?.config?.websitesClosedThisMonth || 0;
 
