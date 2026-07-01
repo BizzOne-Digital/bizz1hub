@@ -18,6 +18,15 @@ const aiRoutes = require('./routes/ai.routes');
 const { errorHandler } = require('./middleware/errorHandler');
 const { authenticateToken } = require('./middleware/auth');
 
+const requiredEnv = ['MONGODB_URI', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
+const missingEnv = requiredEnv.filter((key) => !process.env[key]);
+if (missingEnv.length) {
+  console.error('❌ Missing required environment variables:', missingEnv.join(', '));
+  if (require.main === module) {
+    process.exit(1);
+  }
+}
+
 const app = express();
 
 // ─── Security Middleware ───────────────────────────────────────────────────────
