@@ -29,6 +29,36 @@ if (missingEnv.length) {
 
 const app = express();
 
+// ─── Database Connection (Serverless-optimized) ────────────────────────────────
+let cached = global._mongooseConnection;
+if (!cached) {
+  cached = global._mongooseConnection = { conn: null, promise: null };
+}
+
+async function connectMongo() {
+  if (cached.conn) {
+    return cached.conn;
+  }
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(process.env.MONGODB_URI, {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    }).then((m) => {
+      console.log('✅ MongoDB connected');
+      return m;
+    });
+  }
+  try {
+    cached.conn = await cached.promise;
+  } catch (err) {
+    cached.promise = null;
+    console.error('❌ MongoDB connection failed:', err.message);
+    throw err;
+  }
+  return cached.conn;
+}
+
 // ─── Security Middleware ───────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
@@ -64,6 +94,16 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+// ─── Ensure DB connected before any route ──────────────────────────────────────
+app.use(async (req, res, next) => {
+  try {
+    await connectMongo();
+    next();
+  } catch (err) {
+    res.status(503).json({ success: false, message: 'Database connection failed. Please try again.' });
+  }
+});
+
 // ─── Health Check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'BizzOne Hub API is running', timestamp: new Date().toISOString() });
@@ -87,22 +127,11 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use(errorHandler);
 
-// ─── Database Connection ───────────────────────────────────────────────────────
+// ─── Start Server ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-const connectMongo = mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log('✅ MongoDB connected');
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB connection failed:', err.message);
-    if (require.main === module) {
-      process.exit(1);
-    }
-  });
-
 if (require.main === module) {
-  connectMongo.then(() => {
+  connectMongo().then(() => {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT} [${process.env.NODE_ENV}]`);
     });
